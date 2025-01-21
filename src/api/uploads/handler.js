@@ -4,7 +4,7 @@ const autoBind = require('auto-bind');
 class UploadsHandler {
   constructor(service, albumsService, validator) {
     this._service = service;
-    this._albumsService = albumsService
+    this._albumsService = albumsService;
     this._validator = validator;
 
     autoBind(this);
