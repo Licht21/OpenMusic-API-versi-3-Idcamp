@@ -1,7 +1,9 @@
+/* eslint-disable no-underscore-dangle */
 /* eslint-disable import/no-extraneous-dependencies */
 require('dotenv').config();
 const Jwt = require('@hapi/jwt');
 const Hapi = require('@hapi/hapi');
+const config = require('./utils/config');
 const musics = require('./api/musics');
 const albums = require('./api/albums');
 const users = require('./api/users');
@@ -39,6 +41,11 @@ const CollaborationsValidator = require('./validator/collaborations');
 const playlistActivities = require('./api/playlistsactivities');
 const PlaylistActivitiesService = require('./services/postgres/ActivitiesService');
 
+// Exports
+const _exports = require('./api/exports');
+const ProducerService = require('./services/rabbitmq/ProducerService');
+const ExportsValidator = require('./validator/exports');
+
 const init = async () => {
   const musicsService = new MusicsService();
   const albumsService = new AlbumsService();
@@ -48,8 +55,8 @@ const init = async () => {
   const playlistsService = new PlaylistsService(usersService, musicsService, collaborationsService);
   const playlistActivitiesService = new PlaylistActivitiesService(playlistsService);
   const server = Hapi.server({
-    port: process.env.PORT,
-    host: process.env.HOST,
+    port: config.app.port,
+    host: config.app.host,
     routes: {
       cors: {
         origin: ['*'],
@@ -131,6 +138,14 @@ const init = async () => {
       plugin: playlistActivities,
       options: {
         playlistActivitiesService,
+      },
+    },
+    {
+      plugin: _exports,
+      options: {
+        service: ProducerService,
+        playlistsService,
+        validator: ExportsValidator,
       },
     },
   ]);
