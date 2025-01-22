@@ -1,3 +1,4 @@
+/* eslint-disable max-len */
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable import/no-extraneous-dependencies */
 require('dotenv').config();
@@ -55,16 +56,20 @@ const UploadsValidator = require('./validator/uploads');
 const likes = require('./api/likes');
 const LikesService = require('./services/postgres/LikesService');
 
+// Caches
+const CacheService = require('./services/redis/CacheService');
+
 const init = async () => {
+  const cacheService = new CacheService();
   const musicsService = new MusicsService();
   const albumsService = new AlbumsService();
   const usersService = new UsersService();
   const authenticationsService = new AuthenticationsService();
   const collaborationsService = new CollaborationsService();
-  const playlistsService = new PlaylistsService(usersService, musicsService, collaborationsService);
+  const playlistsService = new PlaylistsService(usersService, musicsService, collaborationsService, cacheService);
   const playlistActivitiesService = new PlaylistActivitiesService(playlistsService);
   const storageService = new StorageService();
-  const likesService = new LikesService();
+  const likesService = new LikesService(cacheService);
 
   const server = Hapi.server({
     port: config.app.port,

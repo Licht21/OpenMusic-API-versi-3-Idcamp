@@ -38,11 +38,22 @@ class LikesHandler {
     const { id: albumsId } = request.params;
 
     const likes = await this._service.getLikes(albumsId);
+    if (likes.cacheStatus) {
+      return h
+        .response({
+          status: 'success',
+          data: {
+            likes: likes.result,
+          },
+        })
+        .header('X-Data-Source', 'cache')
+        .code(200);
+    }
 
     return h.response({
       status: 'success',
       data: {
-        likes,
+        likes: likes.result,
       },
     }).code(200);
   }

@@ -7,11 +7,12 @@ const NotFoundError = require('../../exceptions/NotFoundError');
 const AuthorizationError = require('../../exceptions/AuthorizationError');
 
 class PlaylistsService {
-  constructor(usersService, musicsService, collaborationsService) {
+  constructor(usersService, musicsService, collaborationsService, cacheService) {
     this._pool = new Pool();
     this._collaborationsService = collaborationsService;
     this._usersService = usersService;
     this._musicsService = musicsService;
+    this._cacheService = cacheService;
   }
 
   async addPlaylist(playlistName, playlistOwner) {
@@ -109,6 +110,7 @@ GROUP BY
     if (!result.rows[0].id) {
       throw new InvariantError('Gagal menambahkan musik ke dalam playlist');
     }
+    await this._cacheService.delete(`playlist:${playlistId}`);
     await this.addActivities(playlistId, musicId, userId, 'add');
   }
 
@@ -133,19 +135,28 @@ GROUP BY
   }
 
   async getPlaylistSong(playlistId) {
-    const query = {
-      text: `SELECT musics.id AS id,
-        musics.title AS title,
-        musics.performer AS performer
-        FROM musics
-        LEFT JOIN playlist_musics
-        ON playlist_musics.music_id = musics.id
-        WHERE playlist_musics.playlist_id = $1`,
-      values: [playlistId],
-    };
+    try {
+      // mendapatkan catatan dari cache
+      const result = await this._cacheService.get(`playlist:${playlistId}`);
+      const cacheStatus = true;
+      console.log(cacheStatus);
+      return JSON.parse(result);
+    } catch (error) {
+      const query = {
+        text: `SELECT musics.id AS id,
+          musics.title AS title,
+          musics.performer AS performer
+          FROM musics
+          LEFT JOIN playlist_musics
+          ON playlist_musics.music_id = musics.id
+          WHERE playlist_musics.playlist_id = $1`,
+        values: [playlistId],
+      };
 
-    const result = await this._pool.query(query);
-    return result.rows;
+      const result = await this._pool.query(query);
+      await this._cacheService.set(`playlist:${playlistId}`, JSON.stringify(result.rows));
+      return result.rows;
+    }
   }
 
   async deletePlaylistSong(playlistId, musicId, userId) {
@@ -158,7 +169,7 @@ GROUP BY
     if (!result.rows[0].id) {
       throw new InvariantError('Musik gagal dihapus');
     }
-
+    await this._cacheService.delete(`playlist:${playlistId}`);
     await this.addActivities(playlistId, musicId, userId, 'delete');
   }
 
